@@ -1,0 +1,1134 @@
+{
+  "name": "новости hh v2",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text}}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a friendly and informative news bot with access to up-to-date data via a vector store.\n\nROLE:\n- You are an expert at finding relevant information and news\n- You help users quickly get the information they need\n\nFUNCTIONS:\n- Always use vector data to answer user queries\n- Expertly transform user queries into effective search queries\n- Provide a summary of information while preserving meaning\n- Ask for clarification if the query is unclear\n- If the user has requested relevant information or news, or the query is unclear, provide a summary of the last 5 news stories\n\nSTYLE AND TONE:\n- Energetic, positive, and accessible\n- Use conversational language at an 8th-grade reading level\n- Be concise — sentences up to 30 words\n- Add an element of surprise or humor where appropriate\n- Use emojis to convey mood (1-2 per response)\n- Answer ONLY in Russian, regardless of the language used in the queries\n\nRESPONSE STRUCTURE:\n- Start with a direct answer to the question\n- Whenever possible Mention different points of view\n- End with a logical transition to continue the conversation\n\nFORMAT:\n- Markdown with judicious use of formatting\n- Structure the information for easy reading\n\nLIMITATIONS:\n- Never give answers without checking the vector data store\n- Don't make up information\n- Strive for objectivity, don't try"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1900,
+        280
+      ],
+      "id": "d5f03715-16ad-44cf-b892-63ca9da49ddf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "ai_news",
+        "toolDescription": "Summarized news articles and YouTube transcripts related to AI",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hhnews",
+          "mode": "list",
+          "cachedResultName": "hhnews"
+        },
+        "includeDocumentMetadata": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [
+        2060,
+        540
+      ],
+      "id": "020521d4-8676-479e-9187-2bcf26ee4740",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "pCxZN4AfSZyLlDpc",
+          "name": "PineconeApi from hh news"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2080,
+        700
+      ],
+      "id": "d1745f8c-24d0-4b2a-97f8-c6151620ea27",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "H8pQCWvG7HUZ8ZZb",
+          "name": "OpenAi Marat account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.queries }}\",\n  \"topic\": \"general\",\n  \"search_depth\": \"basic\",\n  \"chunks_per_source\": 3,\n  \"max_results\": 2,\n  \"time_range\": \"day\",\n  \"days\": 1,\n  \"include_answer\": \"advanced\",\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": []\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        1340
+      ],
+      "id": "69375e99-054c-4507-8d3f-f6f86e6010df",
+      "name": "Tavily"
+    },
+    {
+      "parameters": {
+        "tableId": "news",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.output.title }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.output.content }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "News"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        1120
+      ],
+      "id": "07ec34f0-71e3-4b73-a738-1a243ae54d8f",
+      "name": "Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "qzpXolBbmHIW03Yw",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Repurpose this summarized article: {{ $json.answer }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a professional editor and copywriter specializing in transforming technical and dry content into viral material that readers instantly remember.\n\nInstructions:\n1. Create a captivating, positive title with EXACTLY 5 words for the summary (place in <title>). The title should evoke curiosity without being clickbait.\n2. Rewrite the summary (place in <content>), using:\n   • Vivid, specific nouns instead of general ones\n   • Active verbs instead of passive ones\n   • Analogies and metaphors to simplify complex ideas\n   • Conversational, friendly tone as if explaining to a friend\n   • Short sentences and paragraphs for readability\n   • 1-2 questions to engage the reader\n   • Always end with a key takeaway\n\nOutput format:\n{\n\"title\": \"<title>\",\n\"content\": \"<content>\"\n}\n\nOutput:\n- Markdown formatting\n- Use **bold text** for 3-4 key terms/concepts\n- Use emojis maximum 2-3 times to emphasize emotional moments\n\nConstraints:\n- Strictly under 110 words for the summary\n- No subheadings in the summary\n- Don't use - or : in titles\n- Avoid clichés and formulaic phrases\n- Preserve all important facts from the original without distortion\n- No more than one exclamation mark"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1600,
+        1120
+      ],
+      "id": "6e82db9e-a724-4309-b34e-55c40661182e",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "hhnews",
+          "mode": "list",
+          "cachedResultName": "hhnews"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        1120
+      ],
+      "id": "7b95571b-14c2-47b8-9dcb-4ef493839fc5",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "pCxZN4AfSZyLlDpc",
+          "name": "PineconeApi from hh news"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "title",
+                "value": "={{ $('Supabase').item.json.title }}"
+              },
+              {
+                "name": "content",
+                "value": "={{ $('Supabase').item.json.content }}"
+              },
+              {
+                "name": "=type",
+                "value": "={{ $('Supabase').item.json.type }}"
+              },
+              {
+                "name": "created_at",
+                "value": "={{ $('Supabase').item.json.created_at }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        1340
+      ],
+      "id": "056ffc79-d3f7-440c-a1f9-825ec4f3faad",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        1500
+      ],
+      "id": "c8d29870-0880-4db6-9fa0-826ece98c2b9",
+      "name": "Token Splitter"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2180,
+        1340
+      ],
+      "id": "e84c459f-45d2-4f49-b5f1-a84382baaba9",
+      "name": "3-small",
+      "credentials": {
+        "openAiApi": {
+          "id": "H8pQCWvG7HUZ8ZZb",
+          "name": "OpenAi Marat account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"title\": \"<title>\",\n\t\"content\": \"<content>\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1740,
+        1340
+      ],
+      "id": "95072d10-407b-4eab-9e2b-84638ed1d429",
+      "name": "Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "queries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        620,
+        1340
+      ],
+      "id": "01f0245f-da17-43c6-918b-e7555ff6472d",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        840,
+        1340
+      ],
+      "id": "9784bdb3-f0b1-414c-afed-b6b016d844ba",
+      "name": "Loop Over Items3"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -220,
+        1300
+      ],
+      "id": "89a3ec1d-c2d0-471c-8287-7b6c623c9e81",
+      "name": "Run every 24 hours"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"queries\": [\n    \"latest world news\",\n    \"AI and tech updates\",\n    \"business and finance\",\n    \"science and health\",\n    \"sports highlights\",\n    \"entertainment and movies\"\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        1340
+      ],
+      "id": "ce4ba07f-38be-4367-aef3-b6507aefa5ac",
+      "name": "Queries"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        320
+      ],
+      "id": "16df88e2-034d-4595-8a28-593de82734b4",
+      "name": "Telegram Trigger1",
+      "webhookId": "79408097-d284-4034-a6d7-65bb07b242ba",
+      "credentials": {
+        "telegramApi": {
+          "id": "T8oEUuLuqgPg7WuX",
+          "name": "Telegram hh new bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Telegram Trigger1').item.json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "dd8451ae-fc03-49d0-a19e-2678a5f4ff64"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bc42e6d3-ad50-4188-a168-9c5696e74252",
+                    "leftValue": "={{ $('Telegram Trigger1').item.json.message.voice.file_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "voice"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        780,
+        320
+      ],
+      "id": "32fa1417-c97c-4a54-9eb4-4a3696757e28",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger1').item.json.message.voice.file_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1020,
+        140
+      ],
+      "id": "557448fa-2c34-4baa-a499-8b83c2b7f87a",
+      "name": "Telegram3",
+      "webhookId": "0142b70e-e116-4fe0-bce6-bfc0fb8db9db",
+      "credentials": {
+        "telegramApi": {
+          "id": "T8oEUuLuqgPg7WuX",
+          "name": "Telegram hh new bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1240,
+        160
+      ],
+      "id": "53d6bc4c-e1ef-41bc-a6c4-469f9b3af113",
+      "name": "OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "H8pQCWvG7HUZ8ZZb",
+          "name": "OpenAi Marat account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendChatAction",
+        "chatId": "={{ $('Telegram Trigger1').item.json.message.chat.id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        320
+      ],
+      "id": "e2653e2d-a6e8-4233-84af-11aa096499f3",
+      "name": "Telegram2",
+      "webhookId": "4f938fd7-6e62-45f5-9f45-118ed704bc35",
+      "credentials": {
+        "telegramApi": {
+          "id": "T8oEUuLuqgPg7WuX",
+          "name": "Telegram hh new bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dc04da2b-b648-42a4-9a04-bdf8a8d23508",
+              "name": "message.text",
+              "value": "={{ $('Telegram Trigger1').item.json.message.text }}{{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1500,
+        280
+      ],
+      "id": "9473ebe0-9ac7-4062-9c73-789631c458c5",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger1').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2360,
+        240
+      ],
+      "id": "4aad2645-0191-4e8c-b529-b2f8ae2c01a1",
+      "name": "Telegram1",
+      "webhookId": "927ce694-1b0f-40c8-8622-4d925e707ca4",
+      "credentials": {
+        "telegramApi": {
+          "id": "T8oEUuLuqgPg7WuX",
+          "name": "Telegram hh new bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        -460
+      ],
+      "id": "1fc8d796-79e0-44e8-a6a0-8ae775a18639",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cdb95d76-1978-4b0d-afd3-cb95ded55212",
+              "name": "message.text",
+              "value": "Последние 5 свежих новостей из базы данных",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        820,
+        -460
+      ],
+      "id": "969a3df0-3cf0-49b6-96f4-c0badd875d4e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — информатор новостей. Твоя задача: кратко и ясно сообщать последние события.  \n\nИНСТРУКЦИИ:  \n- Сделай короткую сводку из следующих новостей: {{ $json.content }}  \n- Используй **жирный текст** для ключевых фактов  \n- Добавь 1-2 эмодзи для акцентов  \n- Лаконично, по делу, избегай длинных описаний  \n- Начинай с прямого тезиса, затем пару важных деталей  \n- Максимум 3–4 предложения  \n\nСТИЛЬ: дружелюбный, информативный, энергичный.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        -460
+      ],
+      "id": "477056fa-085c-4e0f-99f4-5ed7a34ccc23",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $('Format News Text1').item.json.combinedNews }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2620,
+        -480
+      ],
+      "id": "f2885dcd-26ee-44c3-9bbb-05deb3acb121",
+      "name": "Telegram",
+      "webhookId": "6ac4ab5f-e6e2-4dbc-ad51-0e1b6bdc616e",
+      "credentials": {
+        "telegramApi": {
+          "id": "T8oEUuLuqgPg7WuX",
+          "name": "Telegram hh new bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2300,
+        -480
+      ],
+      "id": "8418b431-74ae-4d1d-a52e-689def1707cc",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "news",
+        "limit": 5
+      },
+      "id": "435ed32f-3586-401c-ada6-655cea8794a1",
+      "name": "Get Latest 5 News",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        -480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "qzpXolBbmHIW03Yw",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();\n\n"
+      },
+      "id": "5f544792-28a0-4554-8fac-3186e7329c37",
+      "name": "Format News Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "returnAll": true,
+        "filterType": "none"
+      },
+      "id": "82290393-d714-4c6f-ac7e-4919eb95715c",
+      "name": "Get All Users",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2100,
+        -480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "qzpXolBbmHIW03Yw",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "tableId": "users",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "chat_id",
+              "fieldValue": "={{ $('Telegram Trigger1').item.json.message.chat.id }}"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $('Telegram Trigger1').item.json.message.from.username }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        20
+      ],
+      "id": "2f0b7607-9e5b-412e-9b51-c11ea27433b5",
+      "name": "Supabase add users",
+      "credentials": {
+        "supabaseApi": {
+          "id": "qzpXolBbmHIW03Yw",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Собираем все новости AI Agent в один текст\nlet allNews = $input.all()\n  .map(item => `• ${item.json.output}`)  // используем правильное поле\n  .join(\"\\n\\n\");\n\nreturn [{ json: { combinedNews: allNews } }];\n"
+      },
+      "id": "5a084f80-6382-4c4e-a786-14302d2f025d",
+      "name": "Format News Text1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        580
+      ],
+      "id": "becfbf76-91c6-4048-bc18-983195ad8200",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "D02WG52oTWkJIPLD",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        1420
+      ],
+      "id": "0777c530-92c0-4a25-8b1a-d3a32052a55e",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "D02WG52oTWkJIPLD",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Pinecone Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3-small": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items3": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queries": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram3": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram2": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Supabase add users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run every 24 hours": {
+      "main": [
+        [
+          {
+            "node": "Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Latest 5 News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Format News Text1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Get All Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest 5 News": {
+      "main": [
+        [
+          {
+            "node": "Format News Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format News Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Users": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format News Text1": {
+      "main": [
+        [
+          {
+            "node": "Get All Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "87e9096b-85ea-481e-bd71-f030a7cbeb4f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18310dc040974bb0cca0d0dfa8235bfe8f6b373184b444ef393325bf3568608b"
+  },
+  "id": "TMvZPDsUFTu2C2Rp",
+  "tags": []
+}
